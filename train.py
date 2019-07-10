@@ -1,22 +1,23 @@
 import argparse
-import logging
 from os import path
 import os
 import configparser
 import shutil
 import hashlib
 import cv2
-import time
+import random
+import numpy as np
+from log import log
+from model import InceptionBinaryModel
 
 
 config = configparser.ConfigParser()
 config.read('config.ini')
 tmp_dir = config['default']['tmp_dir']
+allow_formats = ['png', 'jpeg', 'jpg']
 
 
-def log(msg):
-    logging.info(msg)
-    print(msg)
+min_limit = 30
 
 
 def clear_tmp():
@@ -77,7 +78,6 @@ def remove_incomplete_labels(labels_dict: dict) -> dict:
 
 
 def expand_files_list(dirs: list) -> list:
-    formats = ['png', 'jpeg', 'jpg']
     files_list = []
     for d in dirs:
         files = os.listdir(d)
@@ -85,7 +85,7 @@ def expand_files_list(dirs: list) -> list:
             if f == 'labels.txt':
                 continue
             file_path = path.join(d, f)
-            if file_path.split('.')[-1].lower() in formats and path.isfile(file_path):
+            if file_path.split('.')[-1].lower() in allow_formats and path.isfile(file_path):
                 files_list.append(file_path)
             else:
                 log(f'Not familiar image format: {file_path}')
@@ -98,7 +98,6 @@ def format_label(label_name, label_dict: dict) -> str or None:
     label_dict['false'] = expand_files_list(label_dict['false'])
     log(f'False: {len(label_dict["false"])}')
 
-    min_limit = 20
     if len(label_dict["true"]) < min_limit or len(label_dict["false"]) < min_limit:
         log(f'Too small dataset, need more than {min_limit} for true and false, skipped')
         return
@@ -143,7 +142,6 @@ def format_dataset(data_dir: str) -> list:
     return result
 
 
-# noinspection PyUnresolvedReferences
 def prepare_image(image_path: str):
     image = cv2.imread(image_path)
     height, weight, _ = image.shape
@@ -152,7 +150,6 @@ def prepare_image(image_path: str):
         offset = int((weight - height) / 2)
         image = image[:, offset:offset+square_size]
     else:
-        offset = int((height - weight) / 2)
         image = image[:square_size, :]
     image = cv2.resize(image, (299, 299))
     cv2.imwrite(image_path, image)
@@ -165,12 +162,69 @@ def prepare_images(images_dir: str):
             prepare_image(image_path)
 
 
+def create_generator_from_dir(directory: str):
+    files = list(filter(lambda x: x.split('.')[-1].lower() in allow_formats, os.listdir(directory)))
+    while True:
+        file = files[random.randint(0, len(files)-1)]
+        file = path.join(directory, file)
+        image = cv2.imread(file)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        yield image
+
+
+def add_distorts_generator(gen):
+    for image in gen:
+        if random.random() < 0.5:
+            image = cv2.flip(image, 1)
+        if random.random() < 0.5:
+            image = image * (0.5 + random.random())
+            _, image = cv2.threshold(image, 255, 255, cv2.THRESH_TRUNC)
+        yield image
+
+
+def add_normalization(image_gen):
+    for image in image_gen:
+        image = image / 255.0
+        yield np.expand_dims(image, axis=0)
+
+
+def add_label(gen, label):
+    for d in gen:
+        yield d, np.expand_dims(label, axis=0)
+
+
+def create_mixer_generator(gen_list: list):
+    while True:
+        for gen in gen_list:
+            yield gen.__next__()
+
+
+def create_data_generator(data_path: str):
+    generators = {}
+    for key in ['training', 'validation', 'testing']:
+        generators[key] = create_mixer_generator([
+            add_label(add_normalization(add_distorts_generator(
+                    create_generator_from_dir(path.join(data_path, key, 'true'))
+            )), 1),
+            add_label(add_normalization(add_distorts_generator(
+                create_generator_from_dir(path.join(data_path, key, 'false'))
+            )), 0)
+        ])
+    return generators
+
+
 def main(data_dir: str):
     clear_tmp()
-    logging.basicConfig(filename='log.log', level=logging.INFO, filemode='w')
-    format_dataset(data_dir)
+    dataset_paths = format_dataset(data_dir)
     log('Preparing images')
     prepare_images(tmp_dir)
+    for dp in dataset_paths:
+        label, data_path = dp['label'], dp['dataset']
+        log(f'Training {label}')
+        gens = create_data_generator(data_path)
+        model = InceptionBinaryModel(label, True)
+        model.train(gens, './result/')
+    clear_tmp()
 
 
 if __name__ == '__main__':
