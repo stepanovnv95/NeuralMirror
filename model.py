@@ -33,7 +33,7 @@ class InceptionBinaryModel:
                 self.model.add(tf.keras.layers.Dense(64, activation=tf.nn.relu, name='hidden2'))
                 if self.trainable:
                     self.model.add(tf.keras.layers.Dropout(0.2, name='dropout'))
-                    self.model.add(tf.keras.layers.Dense(1, activation=tf.nn.sigmoid, name='output'))
+                self.model.add(tf.keras.layers.Dense(1, activation=tf.nn.sigmoid, name='output'))
 
                 self.model.compile(optimizer=tf.train.AdamOptimizer(10 ** -4),
                                    loss=tf.keras.losses.binary_crossentropy,
@@ -65,3 +65,14 @@ class InceptionBinaryModel:
                 self.model.load_weights(os.path.join(result_dir, self.label + '_best_weights.h5'))
                 loss, accuracy = self.model.evaluate_generator(dataset['testing'], steps=self.testing_steps)
                 log(f'Best weights. Loss: {loss}, Accuracy: {accuracy}')
+
+    def load(self, weights_file):
+        with self.graph.as_default():
+            with self.session.as_default():
+                self.model.load_weights(weights_file)
+
+    def predict(self, image):
+        with self.graph.as_default():
+            with self.session.as_default():
+                result = self.model.predict(image, batch_size=1)[0]
+                print(result)

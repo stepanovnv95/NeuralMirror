@@ -1,98 +1,104 @@
 from PySide2 import QtWidgets
-from PySide2.QtCore import QTimer, Slot, Signal, QThread, QRegExp
-from PySide2.QtGui import QRegExpValidator
+from PySide2.QtCore import QTimer, Signal, QThread, Slot
 from gui.image_view import ImageView
 from workers.camera_worker import CameraWorker
-import os
+from workers.qt_agent_worker import QtAgentWorker
+# from workers.model_worker import ModelWorker
+# import os
 from time import time
 
 
 class MainWindow(QtWidgets.QWidget):
+    init_signal = Signal()
     tick_signal = Signal()
+
+    last_tick_time = 0
+    tick_timeout = 100
+    max_fps = 10
 
     def __init__(self):
         super(MainWindow, self).__init__()
 
-        postfix = '_best_weights'
-        self.models = {}
-        models_weights = os.listdir('./result')
-        for filename in models_weights:
-            if postfix in filename:
-                model_name = filename.split(postfix)[0]
-                self.models[model_name] = {
-                    'weights': filename,
-                    'widget_label': QtWidgets.QLabel(model_name),
-                    'widget_value': QtWidgets.QLabel('0.0')
-                }
-                self.models[model_name]['widget_value'].setDisabled(True)
-
+        # GUI
         self.image_view = ImageView()
 
         self.camera_id_label = QtWidgets.QLabel('Camera ID: ')
         self.camera_id_input = QtWidgets.QSpinBox()
-        self.camera_id_input.setValue(0)
 
-        # self.max_fps_label = QtWidgets.QLabel('Max FPS: ')
-        # self.max_fps_input = QtWidgets.QLineEdit('5.0')
-        # rx = QRegExp('^\\d+(.\\d+)?$')
-        # validator = QRegExpValidator(rx, self)
-        # self.max_fps_input.setValidator(validator)
-        # self.max_fps_input.textChanged.connect(self.set_max_fps)
+        self.max_fps_label = QtWidgets.QLabel('Max FPS: ')
+        self.max_fps_input = QtWidgets.QSpinBox()
+        self.max_fps_input.setValue(self.max_fps)
+        self.max_fps_input.valueChanged.connect(self.set_max_fps)
 
         self.fps_label = QtWidgets.QLabel('FPS: ')
-        self.fps_value = QtWidgets.QLineEdit()
-        self.fps_value.setDisabled(True)
+        self.fps_output = QtWidgets.QLabel(' - ')
+        self.fps_output.setDisabled(True)
 
-        layout = QtWidgets.QGridLayout()
-        layout.addWidget(self.image_view, 0, 0, 30, 1)
-        layout.addWidget(self.camera_id_label, 0, 1)
-        layout.addWidget(self.camera_id_input, 0, 2)
-        # layout.addWidget(self.max_fps_label, 1, 1)
-        # layout.addWidget(self.max_fps_input, 1, 2)
-        layout.addWidget(self.fps_label, 1, 1)
-        layout.addWidget(self.fps_value, 1, 2)
-        row = 2
-        for key, value in self.models.items():
-            layout.addWidget(value['widget_label'], row, 1)
-            layout.addWidget(value['widget_value'], row, 2)
-            row += 1
+        instruments_layout = QtWidgets.QGridLayout()
+        instruments_layout.addWidget(self.camera_id_label, 0, 0)
+        instruments_layout.addWidget(self.camera_id_input, 0, 1)
+        instruments_layout.addWidget(self.max_fps_label, 1, 0)
+        instruments_layout.addWidget(self.max_fps_input, 1, 1)
+        instruments_layout.addWidget(self.fps_label, 2, 0)
+        instruments_layout.addWidget(self.fps_output, 2, 1)
+
+        panel_layout = QtWidgets.QVBoxLayout()
+        panel_layout.addLayout(instruments_layout)
+        panel_layout.addStretch(1)
+
+        layout = QtWidgets.QHBoxLayout()
+        layout.addWidget(self.image_view, 1)
+        layout.addLayout(panel_layout)
         self.setLayout(layout)
 
+        # Workers
+        # Camera
         self.camera_worker = CameraWorker()
-        self.camera_worker.new_frame_signal.connect(self.image_view.set_image)
         self.camera_id_input.valueChanged.connect(self.camera_worker.set_camera)
-        self.tick_signal.connect(self.camera_worker.take_camera_frame)
+        # Qt agent
+        self.qt_agent_worker = QtAgentWorker()
+        self.camera_worker.new_frame_signal.connect(self.qt_agent_worker.image_numpy_to_qt)
+        self.qt_agent_worker.new_image_signal.connect(self.image_view.set_image)
 
-        self.threads = []
-        self.threads.append(QThread())
-        self.camera_worker.moveToThread(self.threads[-1])
-
-        for t in self.threads:
-            t.start()
-
+        # Timer
         self.timer = QTimer()
-        self.timer.timeout.connect(self.tick_signal)
-        self.camera_worker.new_frame_signal.connect(self.calculate_fps)
-        self.last_time = 0
-        self.set_max_fps(5)
+        self.timer.setSingleShot(True)
+        self.timer.timeout.connect(self.camera_worker.take_camera_frame)
 
-    @Slot(str)
-    def set_max_fps(self, max_fps):
-        self.timer.stop()
-        max_fps = float(max_fps)
-        if max_fps != 0:
-            self.timer.start(int(1000 / max_fps))
+        # Threads
+        self.threads = []
+        workers = [self.camera_worker, self.qt_agent_worker]
+        for w in workers:
+            self.threads.append(QThread())
+            w.moveToThread(self.threads[-1])
+            self.threads[-1].start()
+
+        # Init
+        self.init_signal.connect(self.camera_worker.set_camera)
+        self.init_signal.emit()
+
+        self.qt_agent_worker.new_image_signal.connect(self.tick_finish)
+        self.tick_start()
+
+    def tick_start(self):
+        self.timer.start(self.tick_timeout)
 
     @Slot()
-    def calculate_fps(self):
-        current_time = int(time() * 1000)
-        dt = current_time - self.last_time
-        if dt != 0:
-            fps = round(1000 / dt, 1)
-        else:
-            fps = 999
-        self.fps_value.setText(str(fps))
-        self.last_time = current_time
+    def tick_finish(self):
+        current_tick_time = time()
+        delta_time = current_tick_time - self.last_tick_time
+        self.last_tick_time = current_tick_time
+        current_fps = round(1 / delta_time)
+        self.fps_output.setText(str(current_fps))
+        if current_fps != 0 and self.max_fps != 0:
+            delta = (1 / self.max_fps - 1 / current_fps) * 100
+            self.tick_timeout += delta
+            self.tick_timeout = max(min(self.tick_timeout, 1000), 0)
+        self.tick_start()
+
+    @Slot(int)
+    def set_max_fps(self, max_fps):
+        self.max_fps = max_fps
 
     def closeEvent(self, event):
         for t in self.threads:
