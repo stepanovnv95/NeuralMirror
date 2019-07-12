@@ -75,4 +75,4 @@ class InceptionBinaryModel:
         with self.graph.as_default():
             with self.session.as_default():
                 result = self.model.predict(image, batch_size=1)[0]
-                print(result)
+        return result

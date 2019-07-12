@@ -19,11 +19,10 @@ class CameraWorker(QObject):
         self.camera = cv2.VideoCapture(camera_id, cv2.CAP_DSHOW)
 
     def take_camera_frame(self):
-        pass
         if self.camera is None:
-            return
+            self.new_frame_signal.emit(np.zeros((1, 1, 3)))
         check, frame = self.camera.read()
         if not check:
-            return
+            self.new_frame_signal.emit(np.zeros((1, 1, 3)))
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         self.new_frame_signal.emit(frame)
