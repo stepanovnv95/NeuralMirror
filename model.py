@@ -4,15 +4,15 @@ import os
 from log import log
 
 
-class InceptionBinaryModel:
-    def __init__(self, label: str, trainable):
+class InceptionModel:
+    def __init__(self, label_count: int, trainable: bool):
         if trainable:
             self.training_epochs = 1000
-            self.training_steps_per_epochs = 100
-            self.validation_steps = 50
-            self.testing_steps = 50
+            self.training_steps_per_epochs = 20 * label_count
+            self.validation_steps = 10 * label_count
+            self.testing_steps = 10 * label_count
 
-        self.label = label.replace(' ', '_')
+        self.label_count = label_count
         self.trainable = trainable
         self.module_path = 'https://tfhub.dev/google/imagenet/inception_v3/feature_vector/3'
 
@@ -33,10 +33,10 @@ class InceptionBinaryModel:
                 self.model.add(tf.keras.layers.Dense(64, activation=tf.nn.relu, name='hidden2'))
                 if self.trainable:
                     self.model.add(tf.keras.layers.Dropout(0.2, name='dropout'))
-                self.model.add(tf.keras.layers.Dense(1, activation=tf.nn.sigmoid, name='output'))
+                self.model.add(tf.keras.layers.Dense(label_count, activation=tf.nn.softmax, name='output'))
 
                 self.model.compile(optimizer=tf.train.AdamOptimizer(10 ** -4),
-                                   loss=tf.keras.losses.binary_crossentropy,
+                                   loss=tf.keras.losses.sparse_categorical_crossentropy,
                                    metrics=['accuracy'])
 
                 my_session.run(tf.global_variables_initializer())
@@ -47,7 +47,7 @@ class InceptionBinaryModel:
     def train(self, dataset, result_dir):
         monitor = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.01, patience=20)
         checkpointer = tf.keras.callbacks.ModelCheckpoint(
-            filepath=os.path.join(result_dir, self.label + '_best_weights.h5'),
+            filepath=os.path.join(result_dir, 'best_weights.h5'),
             save_best_only=True, save_weights_only=True
         )
 
@@ -57,12 +57,12 @@ class InceptionBinaryModel:
                                          epochs=self.training_epochs, steps_per_epoch=self.training_steps_per_epochs,
                                          callbacks=[monitor, checkpointer],
                                          validation_data=dataset['validation'], validation_steps=self.validation_steps)
-                self.model.save_weights(os.path.join(result_dir, self.label + '_last_weights.h5'))
+                self.model.save_weights(os.path.join(result_dir, 'last_weights.h5'))
 
                 loss, accuracy = self.model.evaluate_generator(dataset['testing'], steps=self.testing_steps)
                 log(f'Last weights. Loss: {loss}, Accuracy: {accuracy}')
 
-                self.model.load_weights(os.path.join(result_dir, self.label + '_best_weights.h5'))
+                self.model.load_weights(os.path.join(result_dir, 'best_weights.h5'))
                 loss, accuracy = self.model.evaluate_generator(dataset['testing'], steps=self.testing_steps)
                 log(f'Best weights. Loss: {loss}, Accuracy: {accuracy}')
 
