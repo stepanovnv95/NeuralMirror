@@ -5,3 +5,8 @@ tmp
 *__
 *.log
 *.h5
+*.jpg
+*.png
+*.jpeg
+*.webp
+*.mp4
