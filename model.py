@@ -8,13 +8,14 @@ class InceptionModel:
     def __init__(self, label_count: int, trainable: bool):
         if trainable:
             self.training_epochs = 1000
-            self.training_steps_per_epochs = 20 * label_count
-            self.validation_steps = 10 * label_count
-            self.testing_steps = 10 * label_count
+            self.training_steps_per_epochs = 100 * label_count
+            self.validation_steps = 100 * label_count
+            self.testing_steps = 100 * label_count
 
         self.label_count = label_count
         self.trainable = trainable
-        self.module_path = 'https://tfhub.dev/google/imagenet/inception_v3/feature_vector/3'
+        # self.module_path = './hub/inception_v3'
+        self.module_path = 'https://tfhub.dev/google/imagenet/mobilenet_v2_140_224/classification/3'
 
         my_graph = tf.Graph()
         with my_graph.as_default():
@@ -29,10 +30,12 @@ class InceptionModel:
 
                 self.model = tf.keras.Sequential()
                 self.model.add(classifier_layer)
-                self.model.add(tf.keras.layers.Dense(512, activation=tf.nn.relu, name='hidden1'))
-                self.model.add(tf.keras.layers.Dense(64, activation=tf.nn.relu, name='hidden2'))
                 if self.trainable:
-                    self.model.add(tf.keras.layers.Dropout(0.2, name='dropout'))
+                    self.model.add(tf.keras.layers.Dropout(0.1, name='dropout1'))
+                self.model.add(tf.keras.layers.Dense(512, activation=tf.nn.relu, name='hidden1'))
+                self.model.add(tf.keras.layers.Dense(64, activation=tf.nn.relu, name='hidden4'))
+                if self.trainable:
+                    self.model.add(tf.keras.layers.Dropout(0.2, name='dropout7'))
                 self.model.add(tf.keras.layers.Dense(label_count, activation=tf.nn.softmax, name='output'))
 
                 self.model.compile(optimizer=tf.train.AdamOptimizer(10 ** -4),
@@ -74,5 +77,5 @@ class InceptionModel:
     def predict(self, image):
         with self.graph.as_default():
             with self.session.as_default():
-                result = self.model.predict(image, batch_size=1)[0]
+                result = self.model.predict(image, batch_size=1)
         return result

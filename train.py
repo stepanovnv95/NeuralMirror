@@ -9,6 +9,7 @@ import random
 import numpy as np
 from log import log
 from model import InceptionModel
+# from matplotlib import pyplot
 
 
 config = configparser.ConfigParser()
@@ -30,7 +31,7 @@ def clear_tmp():
 
 def get_raw_dataset_info(data_dir: str) -> dict:
     labels = os.listdir(data_dir)
-    labels = filter(lambda x: path.isdir(path.join(data_dir, x)), labels)
+    labels = filter(lambda x: path.isdir(path.join(data_dir, x)) and x[:2] != '__', labels)
     raw_dataset_info = {}
     for l in labels:
         label_path = path.join(data_dir, l)
@@ -76,11 +77,12 @@ def format_label(label_name, label_data: dict):
     # return path.join(tmp_dir, dir_hash_name)
 
 
-def format_dataset(data_dir: str):
+def format_dataset(data_dir: str) -> list:
     raw_dataset_info = get_raw_dataset_info(data_dir)
     for label, images_list in raw_dataset_info.items():
         log(f'Format {label}')
         format_label(label, images_list)
+    return list(raw_dataset_info.keys())
 
 
 def prepare_image(image_path: str):
@@ -92,7 +94,8 @@ def prepare_image(image_path: str):
         image = image[:, offset:offset+square_size]
     else:
         image = image[:square_size, :]
-    image = cv2.resize(image, (299, 299))
+    # image = cv2.resize(image, (299, 299))
+    image = cv2.resize(image, (224, 224))
     cv2.imwrite(image_path, image)
 
 
@@ -140,13 +143,12 @@ def create_mixer_generator(gen_list: list):
             yield gen.__next__()
 
 
-def create_data_generator(data_path: str):
+def create_data_generator(data_path: str, labels):
     generators = {}
     for key in ['training', 'validation', 'testing']:
-        labels = os.listdir(data_path)
         generators[key] = create_mixer_generator([
             add_label(add_normalization(add_distorts_generator(
-                create_generator_from_dir(path.join(tmp_dir, label, key))
+                create_generator_from_dir(path.join(data_path, label, key))
             )), labels.index(label)) for label in labels
         ])
     return generators
@@ -154,13 +156,15 @@ def create_data_generator(data_path: str):
 
 def main(data_dir: str):
     clear_tmp()
-    format_dataset(data_dir)
+    labels = format_dataset(data_dir)
     log('Preparing images')
     prepare_images(tmp_dir)
-    dgens = create_data_generator(data_dir)
-    model = InceptionModel(len(os.listdir(data_dir)), True)
+    dgens = create_data_generator(tmp_dir, labels)
+    model = InceptionModel(len(labels), True)
     model.train(dgens, './result/')
-    clear_tmp()
+    # clear_tmp()
+    with open('./result/labels.txt', 'w') as labels_file:
+        labels_file.write('\n'.join(labels))
 
 
 if __name__ == '__main__':
