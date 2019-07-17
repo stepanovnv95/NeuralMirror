@@ -44,5 +44,5 @@ class VideoWindow(QWidget):
             self.close()
 
     def test_play_video(self):
-        self.player.setMedia(QUrl.fromLocalFile('./videos/videosos.mp4'))
+        self.player.setMedia(QUrl.fromLocalFile('./videos/Imoar.mp4'))
         self.player.play()

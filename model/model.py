@@ -8,7 +8,7 @@ class ClassificationModel:
     def __init__(self, label_count: int, trainable: bool):
         self.label_count = label_count
         self.trainable = trainable
-        self.module_path = './imagenet_mobilenet_v2_140_224_classification_3'
+        self.module_path = './model/imagenet_mobilenet_v2_140_224_classification_3/'
 
         self.graph = tf.Graph()
         with self.graph.as_default():
@@ -35,6 +35,12 @@ class ClassificationModel:
 
                 self.session.run(tf.global_variables_initializer())
 
+    @staticmethod
+    def _create_generator_from_list(lst):
+        while True:
+            for item in lst:
+                yield item
+
     def train(self, training_dataset, validation_dataset, testing_dataset, result_dir: str):
         """
         :param training_dataset: Infinite generator
@@ -44,7 +50,7 @@ class ClassificationModel:
         """
         validation_dataset, testing_dataset = list(validation_dataset), list(testing_dataset)
         training_epochs = 1000
-        training_steps_per_epochs = 50 * self.label_count
+        training_steps_per_epochs = 100 * self.label_count
         validation_steps = len(validation_dataset)
         testing_steps = len(testing_dataset)
 
@@ -59,13 +65,16 @@ class ClassificationModel:
                 self.model.fit_generator(training_dataset,
                                          epochs=training_epochs, steps_per_epoch=training_steps_per_epochs,
                                          callbacks=[monitor, checkpointer],
-                                         validation_data=validation_dataset, validation_steps=validation_steps)
+                                         validation_data=self._create_generator_from_list(validation_dataset),
+                                         validation_steps=validation_steps)
                 self.model.save_weights(os.path.join(result_dir, 'last_weights.h5'))
 
-                loss, accuracy = self.model.evaluate_generator(testing_dataset, steps=testing_steps)
+                loss, accuracy = self.model.evaluate_generator(self._create_generator_from_list(testing_dataset),
+                                                               steps=testing_steps)
                 print(f'Last weights. Loss: {loss}, Accuracy: {accuracy}')
                 self.model.load_weights(os.path.join(result_dir, 'best_weights.h5'))
-                loss, accuracy = self.model.evaluate_generator(testing_dataset, steps=testing_steps)
+                loss, accuracy = self.model.evaluate_generator(self._create_generator_from_list(testing_dataset),
+                                                               steps=testing_steps)
                 print(f'Best weights. Loss: {loss}, Accuracy: {accuracy}')
 
     def load(self, weights_file):
