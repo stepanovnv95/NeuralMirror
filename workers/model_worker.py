@@ -38,5 +38,5 @@ class ModelWorker(AbstractWorker):
         result = self.model.predict(image)[0]
         dict_result = {}
         for i in range(len(self.labels)):
-            dict_result[self.labels[i]] = int(round(result[i] * 100))
+            dict_result[self.labels[i]] = round(result[i], 2)
         self.predict_result_signal.emit(dict_result)

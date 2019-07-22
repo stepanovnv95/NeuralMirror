@@ -5,6 +5,7 @@ from gui.video_window import VideoWindow
 from workers.camera_worker import CameraWorker
 from workers.qt_converter_worker import QtConverterWorker
 from workers.model_worker import ModelWorker
+from workers.filter_worker import FilterWorker
 from time import time
 from os import path
 
@@ -45,8 +46,11 @@ class NeuralMirrorApplication(QApplication):
 
         self.model_worker = ModelWorker(labels, weights_file)
         self.camera_worker.new_frame_signal.connect(self.model_worker.predict)
-        self.model_worker.predict_result_signal.connect(self.main_window.set_predict_values)
-        self.model_worker.predict_result_signal.connect(self.tick_finish)
+
+        self.filter_worker = FilterWorker(labels)
+        self.model_worker.predict_result_signal.connect(self.filter_worker.update_predict_values)
+        self.filter_worker.predict_values_updated_signal.connect(self.main_window.set_predict_values)
+        self.filter_worker.predict_values_updated_signal.connect(self.tick_finish)
 
         self.threads = []
         workers = [self.camera_worker, self.qt_worker, self.model_worker]
@@ -101,7 +105,9 @@ class NeuralMirrorApplication(QApplication):
         return labels, weights_file
 
     def quit(self):
+        print('trying to quit')
         self.close_signal.emit()
+        print('quit signal emitted')
         for t in self.threads:
             t.quit()
             t.wait()
