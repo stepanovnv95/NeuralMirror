@@ -21,7 +21,7 @@ class VideoWindow(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
-        self.info_label = QLabel('Press ESC to exit from fullscreen mode', self)
+        self.info_label = QLabel(' Press ESC to exit from fullscreen mode', self)
         self.info_label.setStyleSheet('QLabel { color: white }')
         self.info_label.hide()
 
