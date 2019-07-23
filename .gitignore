@@ -4,7 +4,7 @@ dev-env
 tmp
 *__
 *.log
-*.h5
+result
 *.jpg
 *.png
 *.jpeg

@@ -6,6 +6,7 @@ from workers.camera_worker import CameraWorker
 from workers.qt_converter_worker import QtConverterWorker
 from workers.model_worker import ModelWorker
 from workers.filter_worker import FilterWorker
+from workers.video_starter_worker import VideoStarterWorker
 from time import time
 from os import path
 
@@ -52,6 +53,9 @@ class NeuralMirrorApplication(QApplication):
         self.filter_worker.predict_values_updated_signal.connect(self.main_window.set_predict_values)
         self.filter_worker.predict_values_updated_signal.connect(self.tick_finish)
 
+        self.video_starter_worker = VideoStarterWorker(labels, 'no_one')
+        self.video_window.video_stopped_signal.connect(self.video_starter_worker.unblock)
+
         self.threads = []
         workers = [self.camera_worker, self.qt_worker, self.model_worker]
         for w in workers:
@@ -66,7 +70,13 @@ class NeuralMirrorApplication(QApplication):
         self.main_window.video_widget_button.setDisabled(True)
         self.video_window.showFullScreen()
 
+        self.filter_worker.predict_values_updated_signal.connect(self.video_starter_worker.update_predict_results)
+        self.video_starter_worker.set_video_signal.connect(self.video_window.play_video)
+
     def enable_video_button(self):
+        self.filter_worker.predict_values_updated_signal.disconnect(self.video_starter_worker.update_predict_results)
+        self.video_starter_worker.set_video_signal.disconnect(self.video_window.play_video)
+
         self.main_window.video_widget_button.setDisabled(False)
 
     @Slot()
@@ -105,9 +115,7 @@ class NeuralMirrorApplication(QApplication):
         return labels, weights_file
 
     def quit(self):
-        print('trying to quit')
         self.close_signal.emit()
-        print('quit signal emitted')
         for t in self.threads:
             t.quit()
             t.wait()

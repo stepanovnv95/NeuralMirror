@@ -37,6 +37,7 @@ class CameraWorker(AbstractWorker):
 
         if not check:
             self.new_frame_signal.emit(self._get_black_frame())
+            return
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         self.new_frame_signal.emit(frame)

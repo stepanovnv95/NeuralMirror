@@ -1,4 +1,4 @@
-from PySide2.QtCore import Qt, QTimer, Signal, QUrl
+from PySide2.QtCore import Qt, QTimer, Signal, QUrl, Slot
 from PySide2.QtMultimediaWidgets import QVideoWidget
 from PySide2.QtMultimedia import QMediaPlayer
 from PySide2.QtWidgets import QWidget, QLabel
@@ -8,6 +8,7 @@ from PySide2.QtGui import QKeyEvent
 
 class VideoWindow(QWidget):
     closed_signal = Signal()
+    video_stopped_signal = Signal()
 
     def __init__(self):
         super().__init__()
@@ -16,6 +17,7 @@ class VideoWindow(QWidget):
         self.video_widget = QVideoWidget()
         self.player = QMediaPlayer()
         self.player.setVideoOutput(self.video_widget)
+        self.player.stateChanged.connect(self._media_player_state_changed_slot)
         layout = QGridLayout()
         layout.addWidget(self.video_widget)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -34,15 +36,19 @@ class VideoWindow(QWidget):
         self.info_label.setGeometry(0, 0, self.width(), 50)
         self.info_label.show()
         self.timer.start(10 * 1000)
-        self.test_play_video()
 
-    def keyPressEvent(self, event:QKeyEvent):
+    def keyPressEvent(self, event: QKeyEvent):
         if event.key() == Qt.Key_Escape:
             self.timer.stop()
             self.player.stop()
             self.closed_signal.emit()
             self.close()
 
-    def test_play_video(self):
-        self.player.setMedia(QUrl.fromLocalFile('./videos/Imoar.mp4'))
+    def play_video(self, video_path):
+        self.player.setMedia(QUrl.fromLocalFile(video_path))
         self.player.play()
+
+    @Slot(QMediaPlayer.State)
+    def _media_player_state_changed_slot(self, state: QMediaPlayer.State):
+        if state == QMediaPlayer.StoppedState:
+            self.video_stopped_signal.emit()

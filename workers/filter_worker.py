@@ -11,7 +11,7 @@ class FilterWorker(QObject):
         self.labels = dict((key, 0.0) for key in labels)
         self.default_key = 'no_one'
         self.last_time = time()
-        self.kt = 1.0
+        self.kt = 2.0
 
     @Slot(dict)
     def update_predict_values(self, predict_dict:dict):
