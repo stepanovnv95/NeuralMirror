@@ -7,7 +7,7 @@ from workers.qt_converter_worker import QtConverterWorker
 from workers.model_worker import ModelWorker
 from workers.filter_worker import FilterWorker
 from workers.video_starter_worker import VideoStarterWorker
-from time import time
+from time import time, sleep
 from os import path
 
 
@@ -117,6 +117,9 @@ class NeuralMirrorApplication(QApplication):
     def quit(self):
         self.close_signal.emit()
         for t in self.threads:
-            t.quit()
-            t.wait()
+            pass
+            # t.quit()
+            # t.wait()
+        # поток с камерой почему-то иногда не завершается
+        # поэтому просто выключаемся
         super().quit()
