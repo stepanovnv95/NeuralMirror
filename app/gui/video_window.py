@@ -46,9 +46,11 @@ class VideoWindow(QWidget):
 
     def play_video(self, video_path):
         self.player.setMedia(QUrl.fromLocalFile(video_path))
+        self.video_widget.show()
         self.player.play()
 
     @Slot(QMediaPlayer.State)
     def _media_player_state_changed_slot(self, state: QMediaPlayer.State):
         if state == QMediaPlayer.StoppedState:
+            self.video_widget.hide()
             self.video_stopped_signal.emit()
