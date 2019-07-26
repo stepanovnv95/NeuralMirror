@@ -3,6 +3,7 @@ from os import path
 import os
 from PySide2.QtCore import Signal, Slot, QTimer
 import random
+from configparser import ConfigParser
 
 
 class VideoStarterWorker(AbstractWorker):
@@ -13,9 +14,7 @@ class VideoStarterWorker(AbstractWorker):
     videos = {}
     blocked = False
     no_one_timer = QTimer()
-    no_one_timeout = (7 * 1000, 15 * 1000)
     watchdog_timer = QTimer()
-    watchdog_timeout = 30 * 1000
 
     def __init__(self, labels: list, no_one_label: str):
         super().__init__()
@@ -23,10 +22,17 @@ class VideoStarterWorker(AbstractWorker):
         self.labels = labels
         self.no_one_label = no_one_label
         self.scan_videos()
+
+        config = ConfigParser()
+        config.read('../config.ini')
+        self.no_one_timeout = (int(config['timers']['no_one_min_timeout']) * 1000,
+                               int(config['timers']['no_one_max_timeout']) * 1000)
+        self.watchdog_timeout = int(config['timers']['watchdog_timeout']) * 1000
+
         self.no_one_timer.setSingleShot(True)
         self.no_one_timer.timeout.connect(self.start_no_one_video)
         self.watchdog_timer.setSingleShot(True)
-        self.watchdog_timer.timeout.connect(self._watchdog)
+        self.watchdog_timer.timeout.connect(self.unblock)
 
     def scan_videos(self):
         for l in self.labels:
@@ -66,10 +72,6 @@ class VideoStarterWorker(AbstractWorker):
         videos = self.videos[label]
         v = videos[random.randint(0, len(videos) - 1)]
         self.set_video_signal.emit(v)
-
-    @Slot()
-    def _watchdog(self):
-        self.blocked = False
 
     @Slot()
     def unblock(self):

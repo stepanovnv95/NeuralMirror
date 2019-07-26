@@ -1,4 +1,5 @@
 from PySide2.QtCore import QObject, Signal, Slot
+from configparser import ConfigParser
 
 
 class FilterWorker(QObject):
@@ -8,9 +9,12 @@ class FilterWorker(QObject):
     def __init__(self, labels: list):
         super().__init__()
         self.values = {l: 0.0 for l in labels}
-        self.k = 0.2
         self.last_label = labels[0]
-        self.hysteresis = (0.4, 0.7)
+        config = ConfigParser()
+        config.read('../config.ini')
+        self.k = float(config['filter']['k'])
+        self.hysteresis = (float(config['filter']['hysteresis_1']),
+                           float(config['filter']['hysteresis_2']))
 
     @Slot(dict)
     def update_predict_values(self, predict_dict: dict):
