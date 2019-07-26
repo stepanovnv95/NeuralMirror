@@ -9,7 +9,8 @@ import numpy as np
 from model.model import ClassificationModel
 
 
-tmp_dir = './tmp/'
+tmp_dir = '../tmp/'
+result_dir = '../result/'
 allow_formats = ['png', 'jpg', 'jpeg', 'webp']
 
 
@@ -172,10 +173,14 @@ def main(data_dir: str):
     print('Preparing dataset')
     prepare_images(tmp_dir, tuple(model.image_size))
     training_generator, validation_generator, testing_generator = create_data_generators(tmp_dir, labels)
-    model.train(training_generator, validation_generator, testing_generator, './result')
-    with open('./result/labels.txt', 'w') as labels_file:
+    tmp_result = path.join(tmp_dir, '__result/')
+    os.mkdir(tmp_result)
+    model.train(training_generator, validation_generator, testing_generator, tmp_result)
+    files = ['last_weights.h5', 'best_weights.h5']
+    for f in files:
+        shutil.copy(path.join(tmp_result, f), result_dir)
+    with open(path.join(result_dir, 'labels.txt'), 'w') as labels_file:
         labels_file.write('\n'.join(labels))
-    clear_tmp()
 
 
 if __name__ == '__main__':

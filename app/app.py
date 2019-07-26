@@ -107,7 +107,7 @@ class NeuralMirrorApplication(QApplication):
             self.max_fps = max_fps
 
     @staticmethod
-    def _scan_model_data(data_path:str = './result/'):
+    def _scan_model_data(data_path:str = '../result/'):
         weights_file = path.join(data_path, 'best_weights.h5')
         labels_file = path.join(data_path, 'labels.txt')
         with open(labels_file) as file:

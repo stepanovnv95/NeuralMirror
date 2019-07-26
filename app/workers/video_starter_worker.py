@@ -9,7 +9,7 @@ class VideoStarterWorker(AbstractWorker):
 
     set_video_signal = Signal(str)
 
-    videos_path = './videos/'
+    videos_path = '../videos/'
     videos = {}
     blocked = False
     no_one_timer = QTimer()
