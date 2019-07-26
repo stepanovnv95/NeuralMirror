@@ -1,0 +1,6 @@
+man
+no_one
+omani_beard
+omani_man
+omani_woman
+woman

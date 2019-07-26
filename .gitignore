@@ -5,9 +5,7 @@ python
 tmp
 *__
 *.log
-result
 *.jpg
 *.png
 *.jpeg
 *.webp
-*.mp4
