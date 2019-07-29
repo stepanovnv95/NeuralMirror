@@ -166,10 +166,10 @@ def create_data_generators(data_path: str, labels: list):
     return training_generator, validation_generator, testing_generator
 
 
-def main(data_dir: str):
+def main(data_dir: str, model: str):
     clear_tmp()
     labels = format_dataset(data_dir)
-    model = ClassificationModel(len(labels), True)
+    model = ClassificationModel(model, len(labels), True)
     print('Preparing dataset')
     prepare_images(tmp_dir, tuple(model.image_size))
     training_generator, validation_generator, testing_generator = create_data_generators(tmp_dir, labels)
@@ -186,5 +186,7 @@ def main(data_dir: str):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('data_dir', type=str)
+    parser.add_argument('--model', type=str, default='mobilenet',
+                        help='The pretrained model, "mobilenet" or "inception"')
     args, _ = parser.parse_known_args()
-    main(args.data_dir)
+    main(args.data_dir, args.model)

@@ -4,11 +4,15 @@ import os
 
 
 class ClassificationModel:
+    models = {
+        'mobilenet': './model/imagenet_mobilenet_v2_140_224_classification_3/',
+        'inception': './model/imagenet_inception_v3_classification_3/',
+    }
 
-    def __init__(self, label_count: int, trainable: bool):
+    def __init__(self, model: str, label_count: int, trainable: bool):
         self.label_count = label_count
         self.trainable = trainable
-        self.module_path = './model/imagenet_mobilenet_v2_140_224_classification_3/'
+        self.module_path = self.models[model]
 
         self.graph = tf.Graph()
         with self.graph.as_default():
@@ -50,7 +54,7 @@ class ClassificationModel:
         """
         validation_dataset, testing_dataset = list(validation_dataset), list(testing_dataset)
         training_epochs = 1000
-        training_steps_per_epochs = 100 * self.label_count
+        training_steps_per_epochs = 50 * self.label_count
         validation_steps = len(validation_dataset)
         testing_steps = len(testing_dataset)
 

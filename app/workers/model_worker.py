@@ -3,6 +3,7 @@ from PySide2.QtCore import Signal, Slot
 import numpy as np
 import cv2
 from model.model import ClassificationModel
+import configparser
 
 
 class ModelWorker(AbstractWorker):
@@ -17,7 +18,9 @@ class ModelWorker(AbstractWorker):
 
     @Slot()
     def init_slot(self):
-        self.model = ClassificationModel(len(self.labels), False)
+        config = configparser.ConfigParser()
+        config.read('../config.ini')
+        self.model = ClassificationModel(config['model']['model'],len(self.labels), False)
         self.model.load(self.weights_file)
         print(f'Model loaded from {self.weights_file}')
         super().init_slot()

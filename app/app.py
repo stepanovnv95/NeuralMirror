@@ -7,7 +7,7 @@ from workers.qt_converter_worker import QtConverterWorker
 from workers.model_worker import ModelWorker
 from workers.filter_worker import FilterWorker
 from workers.video_starter_worker import VideoStarterWorker
-from time import time, sleep
+from time import time
 from os import path
 
 
@@ -107,7 +107,7 @@ class NeuralMirrorApplication(QApplication):
             self.max_fps = max_fps
 
     @staticmethod
-    def _scan_model_data(data_path:str = '../result/'):
+    def _scan_model_data(data_path: str = '../result/'):
         weights_file = path.join(data_path, 'best_weights.h5')
         labels_file = path.join(data_path, 'labels.txt')
         with open(labels_file) as file:
