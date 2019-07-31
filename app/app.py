@@ -7,6 +7,7 @@ from workers.qt_converter_worker import QtConverterWorker
 from workers.model_worker import ModelWorker
 from workers.filter_worker import FilterWorker
 from workers.video_starter_worker import VideoStarterWorker
+from workers.external_environment_worker import ExternalEnvironmentWorker
 from time import time
 from os import path
 
@@ -55,6 +56,9 @@ class NeuralMirrorApplication(QApplication):
 
         self.video_starter_worker = VideoStarterWorker(labels, 'no_one')
         self.video_window.video_stopped_signal.connect(self.video_starter_worker.unblock)
+
+        self.ex_env_worker = ExternalEnvironmentWorker()
+        self.ex_env_worker.ex_environment_labels_signal.connect(self.video_starter_worker.scan_no_one_videos)
 
         self.threads = []
         workers = [self.camera_worker, self.qt_worker, self.model_worker]

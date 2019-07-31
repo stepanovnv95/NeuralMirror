@@ -35,13 +35,24 @@ class VideoStarterWorker(AbstractWorker):
         self.watchdog_timer.timeout.connect(self.unblock)
 
     def scan_videos(self):
-        for l in self.labels:
-            videos_path = path.join(self.videos_path, l)
-            if l == self.no_one_label:
-                videos_path = path.join(videos_path, 'common')
+        for label in self.labels:
+            videos_path = path.join(self.videos_path, label)
+            if label == self.no_one_label:
+                self.scan_no_one_videos(['common'])
+                continue
             videos_files = os.listdir(videos_path)
             videos_files = list(map(lambda x: path.join(videos_path, x), videos_files))
-            self.videos[l] = videos_files
+            self.videos[label] = videos_files
+
+    @Slot(list)
+    def scan_no_one_videos(self, sub_dirs: list):
+        videos_path = path.join(self.videos_path, self.no_one_label)
+        video_files = []
+        for label in sub_dirs:
+            vf = os.listdir(path.join(videos_path, label))
+            vf = list(map(lambda x: path.join(videos_path, label, x), vf))
+            video_files.extend(vf)
+        self.videos[self.no_one_label] = video_files
 
     @Slot(dict)
     def update_predict_results(self, predict_results: dict):
