@@ -18,7 +18,10 @@ class ExternalEnvironmentWorker(QObject):
         self.temperature_threshold = int(config['weather']['temperature_threshold'])
         self.humidity_threshold = int(config['weather']['humidity_threshold'])
         self.owm = pyowm.OWM(config['weather']['owm_api_key'])
-        self.observation = self.owm.weather_at_place(config['weather']['city'])
+        try:
+            self.observation = self.owm.weather_at_place(config['weather']['city'])
+        except pyowm.exceptions.api_call_error.APIInvalidSSLCertificateError:
+            self.observation = None
 
         self.update_info()
 
@@ -45,12 +48,12 @@ class ExternalEnvironmentWorker(QObject):
         if self.evening[0] <= now_time <= self.evening[1]:
             labels.append('evening')
 
-        w = self.observation.get_weather()
-        temperature, humidity = w.get_temperature('celsius')['temp'], w.get_humidity()
-        print(temperature, humidity)
-        if temperature >= self.temperature_threshold:
-            labels.append('hot')
-        if humidity >= self.humidity_threshold:
-            labels.append('humid')
+        if self.observation is not None:
+            w = self.observation.get_weather()
+            temperature, humidity = w.get_temperature('celsius')['temp'], w.get_humidity()
+            if temperature >= self.temperature_threshold:
+                labels.append('hot')
+            if humidity >= self.humidity_threshold:
+                labels.append('humid')
 
         self.ex_environment_labels_signal.emit(labels)
