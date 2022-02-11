@@ -13,7 +13,7 @@ Keras-Preprocessing==1.1.0
 Markdown==3.1.1
 numpy==1.16.4
 opencv-python==4.1.0.25
-protobuf==3.9.0
+protobuf==3.15.0
 pyowm==2.10.0
 PySide2==5.13.0
 requests==2.22.0
